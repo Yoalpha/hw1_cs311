@@ -22,6 +22,7 @@ int openOrder(char * orderFile) {
 }
 
 void closeOrder() {
+	
 	fclose(order);
 	printEarnings();
 	orderOpen=0;
