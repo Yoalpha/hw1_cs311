@@ -2,42 +2,46 @@
 #include "bench.h"
 #include <stdio.h>
 #include <assert.h>
-#include <limits.h>
 
-int lastUsed[5];
-int time  = 0;
-
-// This is my LRU cache implementation i dont use a doubly linked list with a hashmap because i think it is unecessary, in this case our cache is going to be of size 5 so we could just use an array 
-// that has a last_used_time which lets me know which slot was used last and i evict that if i cant place a bin
+#define TABLE_SIZE 5
+#define PARTS 5
 
 
-// Returns -1 if a bin is not in the slot
-int findSlotforBin(int bin){
-	for(int i = 0; i < 5; i++){
-		if(binInSlot(i) == bin){
-			return i;
-		}
+// function to re arrange the lru cache based on the most recently used.
+void arrageUsed(int* used, int last_used){
+    int pos = 0;
+
+
+    for(int i = 0; i<PARTS; i++){
+        if(last_used == used[i]){
+            pos = i;
+        }
+    }
+
+    for(int i = pos; i<PARTS; i++){
+        used[i] = used [i+1];
+
+    }
+    used[PARTS-1] = last_used;
+}
+
+
+int checkSlot(int bin){
+	// returns -1 if bin is not on the workbench
+	// returns the slot of the passed bin
+	for(int slot = 0; slot<5; slot++){
+		if(binInSlot(slot)==bin){
+			return slot;
+		}	
 	}
 	return -1;
 }
 
-// Returns index that had the earliest time
-int chooseEvictionSlot(){
-	int minimum = INT_MAX;
-	int slot = -1;
-	for (int i = 0 ; i < 5; i++){
-		if(lastUsed[i] < minimum){
-			minimum = lastUsed[i];
-			slot = i;
-		}
-	} 
-	return slot;
-}
-
-// Returns the first empty index in the slots
-int findEmptySpace(){
-	for(int i = 0; i < 5; i++){
-		if(binInSlot(i) == -1){
+int checkEmptySlot(){		
+	// returns -1 if no empty slots 
+	// returns first empty slot
+	for(int i=0; i<5; i++){
+		if(binInSlot(i)==-1){
 			return i;
 		}
 	}
@@ -47,40 +51,44 @@ int findEmptySpace(){
 int main(int argc, char **argv) {
 	if (argc<2) { printf("Please invoke as %s <order_file>\n",argv[0]); 	return 1; }
 	if (!openOrder(argv[1])) { return 1; }
+
+	int lru[5] = {0,0,0,0,0};
+	int flag = 0; // Flag is 0 if bin is not on table
+	int slots_used = 0; // Slots used on the bench
+	int slot;
+
+
 	do {
-		printf("time=%d | lastUsed: ", time);
-		for (int i = 0; i < 5; i++) {
-    			printf("%d ", lastUsed[i]);
-		}
-		printf("\n");
 		int pn=nextPartNumber();
 		int bin=pn/10;
-		/* Replace the following code with a better implementation */
-		int slot = findSlotforBin(bin);
-		
-		if (slot != -1){
-			printf("the bin is in the slot");
-			printf("\n");
-			lastUsed[slot] = time++;
-		}
-		else{
-		int insert = findEmptySpace();
-		if (insert == -1){
-			printf("we are evicting right now");
-			printf("\n");
-			int eviction_index = chooseEvictionSlot();
-			lastUsed[eviction_index] = time++;
-			fetchBin(bin,eviction_index);
-		}
-		else{
-				fetchBin(bin,insert);
-				lastUsed[insert] = time++;
-				printf("we are in the normal insert");
-					printf("\n");
+
+			flag = 0;
 			
-		}
-		}
-		/* End of simple implementation */
+			// checking if the required bin is already on the bench
+			for(int slot = 0; slot<5; slot++){
+				if(binInSlot(slot) == bin){
+					flag=1;
+				}	
+			};
+			
+			// If bin is not on workbench
+			if(flag == 0){
+				if(slots_used == 5){
+					// When there are no spots left on the table
+					slot = checkSlot(lru[0]);
+					fetchBin(bin, slot);
+					
+				}else{
+					// when there are spots left on the table 
+					slot = checkEmptySlot();
+					fetchBin(bin, slot);
+					slots_used++;
+				}
+			}
+
+			// re-arranging lru cache based on the most recently used bin
+			arrageUsed(lru, bin);
+
 	} while(fetchNextPart());
 	closeOrder();
 	return 0;
