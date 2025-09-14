@@ -7,10 +7,9 @@
 #define PARTS 5
 
 
-// function to re arrange the lru cache based on the most recently used.
+// function to re arrange the lru cache based on the most recently used bin
 void arrageUsed(int* used, int last_used){
     int pos = 0;
-
 
     for(int i = 0; i<PARTS; i++){
         if(last_used == used[i]){
@@ -56,7 +55,6 @@ int main(int argc, char **argv) {
 	int flag = 0; // Flag is 0 if bin is not on table
 	int slots_used = 0; // Slots used on the bench
 	int slot;
-
 
 	do {
 		int pn=nextPartNumber();
